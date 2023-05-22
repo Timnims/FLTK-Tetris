@@ -1,0 +1,445 @@
+from fltk import *
+from PIL import Image
+from playsound import playsound
+import random
+import io
+
+
+
+class Piece:
+    def __init__(self, coords):
+        self.coords = coords
+    # to make things easier, when you pass in your list of tuple coordinates
+    # you could have the first coordinate be the center
+        self.center = coords[0]
+
+    def rotate(self, dir="clockwise"):
+        offset_x, offset_y = self.center
+        match dir:
+            case "clockwise":
+                self.coords = [(-(y - offset_y) + offset_x, (x - offset_x) + offset_y) for x,y in self.coords]
+                return self.coords
+                
+            case "counterclockwise":
+                self.coords = [((y - offset_y) + offset_x, -(x - offset_x) + offset_y) for x,y in self.coords]
+                return self.coords
+            
+class Song:
+    def __init__(self, song_path):
+        self.instance = vlc.Instance()
+        self.player = self.instance.media_player_new()
+        self.media_list = self.instance.media_list_new([song_path])
+        self.media_list_player = self.instance.media_list_player_new()
+        self.media_list_player.set_media_list(self.media_list)
+
+    def play_sound(self):
+        self.media_list_player.play()
+
+    def loop_sound(self):
+        self.media_list_player.set_playback_mode(vlc.PlaybackMode.loop)
+        self.play_sound()
+
+class Tetris(Fl_Window):
+    def __init__(self, x, y, w, h, label=None):
+        super(Tetris, self).__init__(x, y, w, h, label)
+        self.begin()
+
+        # Game variables
+        self.lines_score = "00"
+        self.score = "000000"
+        self.top = "000000"
+        self.next = ()
+        self.speed = 0.8
+        self.level = "01"
+        self.block_list = []
+
+        #Sounds and song
+        
+        
+
+        self.gameover_sound = vlc.MediaPlayer("Sounds/gameover.mp3")
+        self.rotate_sound = vlc.MediaPlayer("Sounds/rotate.mp3")
+        self.land_sound = vlc.MediaPlayer("Sounds/land.mp3")
+        self.tetris_song = vlc.MediaPlayer("Sounds/tetris.mp3")
+        self.move_sound = vlc.MediaPlayer("Sounds/move_horizontal.mp3")
+        #self.highscore_sound = vlc.MediaPlayer("Sounds\\tetris_sound.mp3")
+        self.clearline_sound = vlc.MediaPlayer("Sounds/clearline.mp3")
+        self.tetris_sound = vlc.MediaPlayer("Sounds/tetris_sound.mp3")
+
+        T_shape = [(5,0),(6,0),(5,1),(4,0),"Images\color1.png"]
+        #T_shape = [(0,1),(0,2),(0,3),(0,4),"Images\color1.png"]
+        S_shape = [(5,0),(6,0),(4,1),(5,1),"Images\color2.png"]
+        Z_shape = [(5,0),(6,1),(4,0),(5,1),"Images\color3.png"]
+        J_shape = [(5,0),(4,0),(6,1),(6,0),"Images\color4.png"]
+        L_shape = [(5,0),(4,0),(4,1),(6,0),"Images\color5.png"]
+        I_shape = [(5,0),(4,0),(3,0),(6,0),"Images\color6.png"]
+        #I_shape = [(1, 19), (2, 19), (3, 19), (4, 19), (5, 19), (6, 19), (7, 19), (8, 19), (9, 19), (1, 18), (2, 18), (3, 18), (4, 18), (5, 18), (6, 18), (7, 18), (8, 18), (9, 18), (1, 17), (2, 17), (3, 17), (4, 17), (5, 17), (6, 17), (7, 17), (8, 17), (9, 17), (1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (9, 16), (1, 15), (2, 15), (3, 15), (4, 15), (5, 15), (6, 15), (7, 15), (8, 15), (9, 15),'color6.png']
+        O_shape = [(4,1),(5,1),(4,0),(5,0),"Images\color7.png"]
+
+        self.shapes = [T_shape, S_shape, Z_shape, J_shape, L_shape, I_shape, O_shape]
+        self.shape_names = ["T_shape", "S_shape", "Z_shape", "J_shape", "L_shape", "I_shape", "O_shape"]
+        self.shape = []
+        self.current_shape = ''
+
+        
+        self.T_stats = 0
+        self.S_stats = 0
+        self.Z_stats = 0
+        self.L_stats = 0
+        self.J_stats = 0
+        self.I_stats = 0
+        self.O_stats = 0
+
+        # Logo creation
+        self.logo_highlight2 = Fl_Box(190, 5, 310, 120)
+        self.logo_highlight2.box(FL_BORDER_BOX)
+        self.logo_highlight2.color(FL_DARK_CYAN)
+
+        self.logo = Fl_Box(195, 15, 300, 100)
+        self.logo.image(self.img_resize('Images\logo.png', 300))
+
+        # Score creation
+        self.score_highlight1 = Fl_Box(484, 140, 200, 200)
+        self.score_highlight1.box(FL_BORDER_BOX)
+        self.score_highlight1.color(FL_DARK_CYAN)
+
+        self.score_highlight2 = Fl_Box(489, 145, 190, 190)
+        self.score_highlight2.box(FL_BORDER_BOX)
+        self.score_highlight2.color(FL_WHITE)
+
+        
+        self.score_highlight3 = Fl_Box(494, 150, 180, 180)
+        self.score_highlight3.box(FL_FLAT_BOX)
+        self.score_highlight3.color(FL_BLACK)
+
+        self.score_top = Fl_Box(505, 145, 75, 75, "TOP  ")
+        self.score_top.labelcolor(FL_WHITE)
+        self.score_top.labelsize(30)
+       
+        self.score_top_display = Fl_Box(519, 175, 75, 75, str(self.top))
+        self.score_top_display.labelcolor(FL_WHITE)
+        self.score_top_display.labelsize(30)
+    
+        self.score_score = Fl_Box(520, 225, 75, 75, "SCORE")
+        self.score_score.labelcolor(FL_WHITE)
+        self.score_score.labelsize(30)
+    
+        self.score_score_display = Fl_Box(519, 255, 75, 75, str(self.score))
+        self.score_score_display.labelcolor(FL_WHITE)
+        self.score_score_display.labelsize(30)
+        
+        
+
+        # Next object creation
+        self.next_highlight1 = Fl_Box(484, 339, 200, 200)
+        self.next_highlight1.box(FL_BORDER_BOX)
+        self.next_highlight1.color(FL_DARK_CYAN)
+
+        self.next_highlight2 = Fl_Box(489, 344, 190, 190)
+        self.next_highlight2.box(FL_BORDER_BOX)
+        self.next_highlight2.color(FL_WHITE)
+        
+        self.next_highlight3 = Fl_Box(494, 349, 180, 180)
+        self.next_highlight3.box(FL_FLAT_BOX)
+        self.next_highlight3.color(FL_BLACK)
+
+        self.next_shape = Fl_Box(524, 354, 50, 50, "NEXT ")
+        self.next_shape.labelcolor(FL_WHITE)
+        self.next_shape.labelsize(30)
+
+        # MAKE GRID FOR NEXT BLOCKS
+
+        # Speed/level creation
+        self.level_highlight1 = Fl_Box(484, 538, 200, 60)
+        self.level_highlight1.box(FL_BORDER_BOX)
+        self.level_highlight1.color(FL_DARK_CYAN)
+
+        self.level_highlight2 = Fl_Box(489, 543, 190, 50)
+        self.level_highlight2.box(FL_BORDER_BOX)
+        self.level_highlight2.color(FL_WHITE)
+        
+        self.level_highlight3 = Fl_Box(494, 548, 180, 40)
+        self.level_highlight3.box(FL_FLAT_BOX)
+        self.level_highlight3.color(FL_BLACK)
+
+        self.level_display = Fl_Box(534, 543, 50, 50, f"  LEVEL {self.level}")
+        self.level_display.labelcolor(FL_WHITE)
+        self.level_display.labelsize(30)
+
+        
+        # Lines creation
+        self.line_highlight1 = Fl_Box(484, 597, 200, 63)
+        self.line_highlight1.box(FL_BORDER_BOX)
+        self.line_highlight1.color(FL_DARK_CYAN)
+
+        self.line_highlight2 = Fl_Box(489, 602, 190, 53)
+        self.line_highlight2.box(FL_BORDER_BOX)
+        self.line_highlight2.color(FL_WHITE)
+        
+        self.line_highlight3 = Fl_Box(494, 607, 180, 43)
+        self.line_highlight3.box(FL_FLAT_BOX)
+        self.line_highlight3.color(FL_BLACK)
+        
+        self.line_display = Fl_Box(534, 605, 50, 50, f"  LINES {self.lines_score}")
+        self.line_display.labelcolor(FL_WHITE)
+        self.line_display.labelsize(30)
+
+        # Statistics creation
+        self.statistics_highlight1 = Fl_Box(25, 200, 191, 460)
+        self.statistics_highlight1.box(FL_BORDER_BOX)
+        self.statistics_highlight1.color(FL_DARK_CYAN)
+
+        self.statistics_highlight2 = Fl_Box(30, 205, 181, 450)
+        self.statistics_highlight2.box(FL_BORDER_BOX)
+        self.statistics_highlight2.color(FL_WHITE)
+        
+        self.statistics_highlight3 = Fl_Box(35, 210, 171, 440)
+        self.statistics_highlight3.box(FL_FLAT_BOX)
+        self.statistics_highlight3.color(FL_BLACK)
+        
+        self.statistics_display = Fl_Box(90, 210, 50, 50, f" STATISTICS")
+        self.statistics_display.labelcolor(FL_WHITE)
+        self.statistics_display.labelsize(25)
+        
+
+        # Create grid of boxes
+        self.grid_highlight1 = Fl_Box(215, 140, 270, 520)
+        self.grid_highlight1.box(FL_BORDER_BOX)
+        self.grid_highlight1.color(FL_DARK_CYAN)
+
+        self.grid_highlight2 = Fl_Box(220, 145, 260, 510)
+        self.grid_highlight2.box(FL_BORDER_BOX)
+        self.grid_highlight2.color(FL_WHITE)
+
+        self.grid = []
+        for a in range(10):
+            temp = []
+            for b in range(20):
+                x = 225 + (25 * a)
+                y = 150 + (25 * b)
+                Box = Fl_Box(x, y, 25, 25)
+                Box.box(FL_FLAT_BOX)
+                Box.color(FL_BLACK)
+                temp.append(Box)
+            self.grid.append(temp)
+
+
+    # Controls
+    def handle(self, event):
+        if event == FL_KEYDOWN:
+            key = Fl.event_key()
+                
+            if key == FL_Left:
+                self.move_sound.stop()
+                self.move_sound.play()
+                self.move_left()
+
+            elif key == FL_Right:
+                
+                self.move_right()
+
+            elif key == FL_Up:
+                self.insta_down()
+            
+            elif key == FL_Down:
+                self.move_down(True)
+                
+
+            elif key == ord('x'):
+                self.rotate_sound.stop()
+                self.rotate_sound.play()
+                if self.current_shape == "O_shape":
+                    return False
+
+                
+                rotated_shape = Piece(self.shape[:-1])
+                self.rotate_shape(rotated_shape.rotate('clockwise'))
+
+            elif key == ord('z'):
+                self.rotate_sound.stop()
+                self.rotate_sound.play()
+                if self.current_shape == "O_shape":
+                    return False
+                
+                rotated_shape = Piece(self.shape[:-1])
+                self.rotate_shape(rotated_shape.rotate('counterclockwise'))
+
+            elif key == FL_Enter:
+                song_path = "Sounds/tetris.mp3"
+                player = Song(song_path)
+                player.loop_sound()
+                self.newshape()
+
+            else:
+                return False
+            return True
+        return super(Tetris, self).handle(event)
+
+    def img_resize(self, fname, width):
+        '''resizes any image type using high quality PIL library'''
+        img = Image.open(fname) #opens all image formats supported by PIL
+        w,h = img.size
+        height = int(width*h/w)  #correct aspect ratio
+        img = img.resize((width, height), Image.Resampling.BICUBIC) #high quality resizing
+        mem = io.BytesIO()  #byte stream memory object
+        img.save(mem, format="PNG") #converts image type to PNG byte stream
+        siz = mem.tell() #gets size of image in bytes without reading again
+        return Fl_PNG_Image(None, mem.getbuffer(), siz)
+
+    # Creates a new shape, if there is no room for it, gameover
+    def newshape(self):
+        ns = random.randrange(len(self.shapes))
+        self.shape = self.shapes[ns].copy()
+        self.current_shape = self.shape_names[ns]
+        
+        for x in range(len(self.shape)-1):
+            
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+
+            if self.grid[self.shape[x][0]][self.shape[x][1]].image() != None:
+                self.gameover()
+                return False
+
+        for x in range(len(self.shape)-1):         
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.img_resize(str(self.shape[-1]), 25))
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+        Fl_add_timeout(self.speed, self.move_down, False)
+    
+    # Move the block down repeatedly by either timeout and player control(to speed up)
+    def move_down(self, key):
+        for x in range(len(self.shape)-1):
+            if self.shape[x][1]+1 >= 20:
+                if key == False:
+                    
+                    Fl_remove_timeout(self.move_down)
+                    
+                    self.clear_lines()
+                    self.land_sound.stop()
+                    self.land_sound.play()
+                    Fl_add_timeout(self.speed, self.newshape)
+                return
+            if self.grid[self.shape[x][0]][self.shape[x][1]+1].image() != None:
+                if (self.shape[x][0], self.shape[x][1]+1) not in self.shape:
+                    if key == False:
+                        Fl_remove_timeout(self.move_down)
+                        self.clear_lines()
+                        self.land_sound.stop()
+                        self.land_sound.play()
+                        Fl_add_timeout(self.speed, self.newshape)
+                    return
+            
+            
+        for x in range(len(self.shape)-1):
+            
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+            self.shape[x] = (self.shape[x][0], self.shape[x][1]+1)
+
+        for x in range(len(self.shape)-1):
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.img_resize(str(self.shape[-1]), 25))
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+        
+        if key == False:
+            Fl_add_timeout(self.speed, self.move_down, False)
+
+    # Player left input
+    def move_left(self):
+        for x in range(len(self.shape)-1):
+            if self.shape[x][0]-1 < 0:
+                return
+            if self.grid[self.shape[x][0]-1][self.shape[x][1]].image() != None:
+                if (self.shape[x][0]-1, self.shape[x][1]) not in self.shape:
+                    return
+            
+            
+        for x in range(len(self.shape)-1):
+            
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+            self.shape[x] = (self.shape[x][0]-1, self.shape[x][1])
+
+        for x in range(len(self.shape)-1):
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.img_resize(str(self.shape[-1]), 25))
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+
+    # Player right input
+    def move_right(self):
+        for x in range(len(self.shape)-1):
+            if self.shape[x][0]+1 >= 10:
+                return
+            if self.grid[self.shape[x][0]+1][self.shape[x][1]].image() != None:
+                if (self.shape[x][0]+1, self.shape[x][1]) not in self.shape:
+                    return
+            
+            
+        for x in range(len(self.shape)-1):
+            
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+            self.shape[x] = (self.shape[x][0]+1, self.shape[x][1])
+
+        for x in range(len(self.shape)-1):
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.img_resize(str(self.shape[-1]), 25))
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+
+
+
+    #def insta_down(self)
+        #return
+    
+    def rotate_shape(self, newshape):
+        for x in range(len(newshape)):
+            if 0 > newshape[x][0] > 10:
+                print('-1')
+                return
+            
+            if newshape[x][0] > 10:
+                print('-1')
+                return            
+
+            if newshape[x][1] < 0:
+                print('-2')
+                return
+        
+
+        for x in range(len(self.shape)-1):
+            
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+
+        self.shape[:-1] = newshape
+
+        for x in range(len(self.shape)-1):
+            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.img_resize(str(self.shape[-1]), 25))
+            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+            
+    
+    # Check if line is full, clear full lines and move everything above down
+    def clear_lines(self):
+        return
+        self.add_points(num_lines_cleared)
+
+    
+    def add_points(self, num):
+        if num == 0:
+            return
+        print(f'Lines cleared: {num}')
+        return
+    
+    def level(self):
+        return
+    
+    def statistics(self, shape):
+        return
+
+
+    def gameover(self):
+        print('Gameover!')
+
+
+       
+if __name__ == "__main__":
+    window = Tetris(100, 100, 700, 700, "Tetris")
+    window.end()
+    window.show()
+    Fl.run()
