@@ -1,2 +1,4 @@
 fltk
 pillow
+pygame
+vlc
