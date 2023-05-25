@@ -52,7 +52,18 @@ class Tetris(Fl_Window):
         self.lines_score = 0
         self.score = 0
         self.formatted_score = "{:06d}".format(self.score)
-        self.top = 0
+        try:
+            with open("highscore.txt", "r") as file:
+                self.top = int(file.read())
+                
+        except FileNotFoundError:
+            print('Error')
+            self.top = 0
+
+        except ValueError:
+            print('Error')
+            self.top = 0
+
         self.formatted_top = "{:06d}".format(self.top)
         self.next_shape = []
         self.next_shape_num = -1
@@ -185,7 +196,7 @@ class Tetris(Fl_Window):
         self.level_highlight3.box(FL_FLAT_BOX)
         self.level_highlight3.color(FL_BLACK)
 
-        self.level_display = Fl_Box(534, 543, 50, 50, f"  LEVEL")
+        self.level_display = Fl_Box(460, 543, 200, 50, "LEVEL 1")
         self.level_display.labelcolor(FL_WHITE)
         self.level_display.labelsize(30)
 
@@ -203,7 +214,7 @@ class Tetris(Fl_Window):
         self.line_highlight3.box(FL_FLAT_BOX)
         self.line_highlight3.color(FL_BLACK)
         
-        self.line_display = Fl_Box(450, 605, 200, 50, "LINES")
+        self.line_display = Fl_Box(460, 605, 200, 50, "LINES 0")
         self.line_display.labelcolor(FL_WHITE)
         self.line_display.labelsize(30)
 
@@ -223,6 +234,32 @@ class Tetris(Fl_Window):
         self.statistics_display = Fl_Box(90, 210, 50, 50, f" STATISTICS")
         self.statistics_display.labelcolor(FL_WHITE)
         self.statistics_display.labelsize(25)
+
+        self.statistics_list = []
+        self.stats_grid = []
+        
+        for a in range(4):
+            temp = []
+
+            for b in range(21):
+                x = 60 + (18 * a)
+                y = 260 + (18 * b)
+                Box = Fl_Box(x, y, 18, 18)
+                Box.box(FL_FLAT_BOX)
+                Box.color(FL_BLACK)
+                temp.append(Box)
+            self.stats_grid.append(temp)
+
+        for a in range(7):
+            stats_box = Fl_Box(140, 250 + a*53, 50, 50, "0")
+            stats_box.labelcolor(FL_RED)
+            stats_box.labelsize(20)
+            stats_box.box(FL_FLAT_BOX)
+            stats_box.color(FL_BLACK)
+            self.statistics_list.append(stats_box)
+            
+            for b in range(4):
+                self.stats_grid[self.shapes[a][b][0]-4][self.shapes[a][b][1] + a*3].image(self.shapes[a][-1].copy(18, 18))
         
 
         # Create grid of boxes
@@ -336,7 +373,7 @@ class Tetris(Fl_Window):
         ns = self.nextshape()
         self.shape = self.shapes[ns].copy()
         self.current_shape = self.shape_names[ns]
-        
+        self.statistics_list[self.shapes.index(self.shape)].label(str(int(self.statistics_list[self.shapes.index(self.shape)].label())+1))
         for x in range(len(self.shape)-1):
             
             self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
@@ -372,7 +409,9 @@ class Tetris(Fl_Window):
 
                         sound_thread = threading.Thread(target=self.play_sound, args=(self.land_sound,))
                         sound_thread.start()
-                        self.add_points(20, 0)
+                        self.add_points(50, 0)
+                        
+                        
                         Fl_add_timeout(self.speed, self.newshape)
                         
                     return
@@ -533,17 +572,27 @@ class Tetris(Fl_Window):
                         self.grid[x][y-1].redraw()
 
         if len(cleared_lines) > 0:
-            self.add_points(len(cleared_lines)*100, len(cleared_lines))
+            self.add_points(len(cleared_lines), len(cleared_lines))
 
     
     def add_points(self, points, lines):
         if lines > 0:
             if lines < 4:
-
+                 
                 sound_thread = threading.Thread(target=self.play_sound, args=(self.clearline_sound,))
                 sound_thread.start()
-            if lines == 4:
+            if lines == 1:
+                points = 400
 
+            elif lines == 2:
+                points = 800
+
+            elif lines == 3:
+                points = 1200
+
+            if lines == 4:
+                points = 2000
+                
                 sound_thread = threading.Thread(target=self.play_sound, args=(self.tetris_sound,))
                 sound_thread.start()
 
@@ -564,20 +613,20 @@ class Tetris(Fl_Window):
 
         if self.level == 5:
             return
-        if self.level != self.lines_score // 10:
+        if self.level != self.lines_score // 10 + 1:
             self.speed = self.speed / 1.5
-        self.level = self.lines_score // 10
-        self.level_display.label(f"  LEVEL {self.level}")
+        self.level = self.lines_score // 10 + 1
+        self.level_display.label(f"  LEVEL {str(self.level)}")
         self.level_display.redraw_label()
-        return
-
-    
-    def statistics(self, shape):
         return
 
 
     def gameover(self):
         self.player.stop_sound()
+        if self.score == self.top:
+            with open("highscore.txt", "w") as file:
+                file.write(str(self.top))
+                print('New Highscore!')
 
         sound_thread = threading.Thread(target=self.play_sound, args=(self.gameover_sound,))
         sound_thread.start()
@@ -585,9 +634,6 @@ class Tetris(Fl_Window):
             for y in range(20):
                 self.grid[x][y].image(self.gameover_color.copy(25, 25))
                 self.redraw()
-
-        
-        print('Gameover!')
 
 
        
