@@ -57,11 +57,11 @@ class Tetris(Fl_Window):
                 self.top = int(file.read())
                 
         except FileNotFoundError:
-            print('Error')
+            print('Error. It seems the file \'highscore.txt\' has been delted or missing!')
             self.top = 0
 
         except ValueError:
-            print('Error')
+            print('Error. Incorrect value type in \'highscore.txt\'')
             self.top = 0
 
         self.formatted_top = "{:06d}".format(self.top)
