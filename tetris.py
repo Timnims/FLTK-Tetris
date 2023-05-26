@@ -70,6 +70,7 @@ class Tetris(Fl_Window):
         self.speed = 0.8
         self.level = 1
         self.block_list = []
+        self.game = False
 
         #Sounds and song
         self.gameover_sound = "Sounds/gameover.wav"
@@ -292,8 +293,18 @@ class Tetris(Fl_Window):
     def handle(self, event):
         if event == FL_KEYDOWN:
             key = Fl.event_key()
+
+            if key == FL_Enter:
+                self.game = True
+                song_path = "Sounds/tetris.mp3"
+                self.player = Song(song_path)
+                self.player.loop_sound()
+                self.reset()
+
+            elif self.game == False:
+                return False
                 
-            if key == FL_Left:
+            elif key == FL_Left:
                 pygame.mixer.init()
                 pygame.mixer.music.load(self.move_sound)
                 pygame.mixer.music.play()
@@ -305,8 +316,8 @@ class Tetris(Fl_Window):
                 pygame.mixer.music.play()
                 self.move_right()
 
-            #elif key == FL_Up:
-            #    self.insta_down(0)
+            elif key == FL_Up:
+               self.insta_down()
             
             elif key == FL_Down:
                 self.move_down(True)
@@ -334,12 +345,6 @@ class Tetris(Fl_Window):
                 
                 rotated_shape = Piece(self.shape[:-1])
                 self.rotate_shape(rotated_shape.rotate('counterclockwise'))
-
-            elif key == FL_Enter:
-                song_path = "Sounds/tetris.mp3"
-                self.player = Song(song_path)
-                self.player.loop_sound()
-                self.newshape()
 
             else:
                 return False
@@ -485,40 +490,53 @@ class Tetris(Fl_Window):
             self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
 
 
-    '''
-    def insta_down(self, distance):
-        for x in range(len(self.shape)-1):
-            if self.shape[x][1]+distance <= 20 or self.grid[self.shape[x][0]][self.shape[x][1]+distance].image() == None:
-                if (self.shape[x][0], self.shape[x][1]+distance) not in self.shape:
-                    print(':)')
-                    #if (self.shape[x][0], self.shape[x][1]+distance) not in self.shape:
-                    self.insta_down(distance+1)
-                    print(distance)
-                    return
 
-        print('hi')
-        print(distance)
-                    
+    def insta_down(self):
         for x in range(len(self.shape)-1):
+            
             self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
             self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
-            self.shape[x] = (self.shape[x][0], self.shape[x][1]+(distance-2))
-            print(self.shape)
 
         for x in range(len(self.shape)-1):
-            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.shape[-1].copy(25, 25))
-            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
-                                            
-                            
-        pygame.mixer.init()
-        sound = pygame.mixer.Sound(self.land_sound)
-        sound.play()
-        Fl_remove_timeout(self.move_down)
-        self.newshape()
-'''                
+            if self.shape[x][1]+1 >= 25:
+                for x in range(len(self.shape)-1):
+                    self.grid[self.shape[x][0]][self.shape[x][1]].image(self.shape[-1].copy(25, 25))
+                    self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
 
-        
-        
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.land_sound)
+                pygame.mixer.music.play()
+
+                    
+                Fl_remove_timeout(self.move_down)
+                self.clear_lines()
+
+                self.newshape()
+
+                return
+            if self.grid[self.shape[x][0]][self.shape[x][1]+1].image() != None:
+                if (self.shape[x][0], self.shape[x][1]+1) not in self.shape:
+                    for x in range(len(self.shape)-1):
+                        self.grid[self.shape[x][0]][self.shape[x][1]].image(self.shape[-1].copy(25, 25))
+                        self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+                    
+                    pygame.mixer.init()
+                    pygame.mixer.music.load(self.land_sound)
+                    pygame.mixer.music.play()
+                    Fl_remove_timeout(self.move_down)
+                    self.clear_lines()
+
+                    self.add_points(50, 0)
+                    self.newshape()
+                        
+                    return
+            
+            
+        for x in range(len(self.shape)-1):
+            
+            self.shape[x] = (self.shape[x][0], self.shape[x][1]+1)
+            
+        self.insta_down()
 
     
     def rotate_shape(self, newshape):
@@ -634,9 +652,35 @@ class Tetris(Fl_Window):
         self.level_display.label(f"  LEVEL {str(self.level)}")
         self.level_display.redraw_label()
         return
+    
+    def reset(self):
+        for x in range(10):
+            for y in range(25):
+                self.grid[x][y].image(None)
+        
+
+        for x in range(7):
+            self.statistics_list[x].label("0")
+        
+        for x in range(4):
+            for y in range(4):
+                self.next_grid[x][y].image(None)
+        
+
+        self.lines_score = 0
+        self.level = 1
+        self.score = 0
+        self.formatted_score = "{:06d}".format(self.score)
+        self.redraw()
+
+        self.newshape()
+
+
+        return
 
 
     def gameover(self):
+        self.game = False
         self.player.stop_sound()
         if self.score == self.top:
             with open("highscore.txt", "w") as file:
@@ -648,9 +692,11 @@ class Tetris(Fl_Window):
                 pygame.mixer.music.play()
 
         for x in range(10):
-            for y in range(20):
+            for y in range(25):
                 self.grid[x][y].image(self.gameover_color.copy(25, 25))
-                self.redraw()
+
+
+        self.redraw()
 
 
        
