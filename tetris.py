@@ -394,12 +394,11 @@ class Tetris(Fl_Window):
                 if key == False:
                     
                     Fl_remove_timeout(self.move_down)
-                    
                     self.clear_lines()
-
                     sound_thread = threading.Thread(target=self.play_sound, args=(self.land_sound,))
                     sound_thread.start()
-                    Fl_add_timeout(self.speed, self.newshape)
+                    self.newshape()
+
                 return
             if self.grid[self.shape[x][0]][self.shape[x][1]+1].image() != None:
                 if (self.shape[x][0], self.shape[x][1]+1) not in self.shape:
@@ -410,9 +409,7 @@ class Tetris(Fl_Window):
                         sound_thread = threading.Thread(target=self.play_sound, args=(self.land_sound,))
                         sound_thread.start()
                         self.add_points(50, 0)
-                        
-                        
-                        Fl_add_timeout(self.speed, self.newshape)
+                        self.newshape()
                         
                     return
             
@@ -524,7 +521,8 @@ class Tetris(Fl_Window):
             
             
             if self.grid[newshape[x][0]][newshape[x][1]].image() != None:
-                if (newshape[x][0], newshape[x][1]) not in newshape:
+                if (newshape[x][0], newshape[x][1]) not in self.shape:
+                    print(':)')
                     return
         
 
