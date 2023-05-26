@@ -637,6 +637,7 @@ class Tetris(Fl_Window):
 
     # Resets the game
     def reset(self):
+        self.player.stop_sound()
         for x in range(10):
             for y in range(25):
                 self.grid[x][y].image(None)
@@ -652,6 +653,11 @@ class Tetris(Fl_Window):
         self.level = 1
         self.score = 0
         self.formatted_score = "{:06d}".format(self.score)
+        self.score_top_display.label(str(self.formatted_top))
+        self.line_display.label("LINES 0")
+        self.level_display.label("LEVEL 1")
+        self.speed = 0.8
+        Fl_remove_timeout(self.move_down)
         self.redraw()
 
         self.newshape()
