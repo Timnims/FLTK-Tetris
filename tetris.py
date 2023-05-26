@@ -1,10 +1,10 @@
 from fltk import *
 from PIL import Image
-import random
 import io
+import pygame
+import random
 import vlc
-import winsound
-import threading
+
 
 
 class Piece:
@@ -81,18 +81,19 @@ class Tetris(Fl_Window):
         self.clearline_sound = "Sounds/clearline.wav"
         self.tetris_sound = "Sounds/tetris_sound.wav"
 
-        sound_thread = threading.Thread(target=self.play_sound, args=(self.land_sound,))
-        sound_thread.start()
+        pygame.mixer.init()
+        pygame.mixer.music.load(self.tetris_sound)
+        pygame.mixer.music.play()
 
         
         
-        T_shape = [(5,0),(6,0),(5,1),(4,0), Fl_PNG_Image('Images/color1.png')]
-        S_shape = [(5,0),(6,0),(4,1),(5,1), Fl_PNG_Image("Images/color2.png")]
-        Z_shape = [(5,0),(6,1),(4,0),(5,1), Fl_PNG_Image("Images/color3.png")]
-        J_shape = [(5,0),(4,0),(6,1),(6,0), Fl_PNG_Image("Images/color4.png")]
-        L_shape = [(5,0),(4,0),(4,1),(6,0), Fl_PNG_Image("Images/color5.png")]
-        I_shape = [(5,0),(4,0),(3,0),(6,0), Fl_PNG_Image("Images/color6.png")]
-        O_shape = [(4,1),(5,1),(4,0),(5,0), Fl_PNG_Image("Images/color7.png")]
+        T_shape = [(5,5),(6,5),(5,6),(4,5), Fl_PNG_Image('Images/color1.png')]
+        S_shape = [(5,5),(6,5),(4,6),(5,6), Fl_PNG_Image("Images/color2.png")]
+        Z_shape = [(5,5),(6,6),(4,5),(5,6), Fl_PNG_Image("Images/color3.png")]
+        J_shape = [(5,5),(4,5),(6,6),(6,5), Fl_PNG_Image("Images/color4.png")]
+        L_shape = [(5,5),(4,5),(4,6),(6,5), Fl_PNG_Image("Images/color5.png")]
+        I_shape = [(5,5),(4,5),(3,5),(6,5), Fl_PNG_Image("Images/color6.png")]
+        O_shape = [(4,6),(5,6),(4,5),(5,5), Fl_PNG_Image("Images/color7.png")]
         self.gameover_color = Fl_PNG_Image("Images/color8.png")
         #I_shape = [(1, 19), (2, 19), (3, 19), (4, 19), (5, 19), (6, 19), (7, 19), (8, 19), (9, 19), (1, 18), (2, 18), (3, 18), (4, 18), (5, 18), (6, 18), (7, 18), (8, 18), (9, 18), (1, 17), (2, 17), (3, 17), (4, 17), (5, 17), (6, 17), (7, 17), (8, 17), (9, 17), (1, 16), (2, 16), (3, 16), (4, 16), (5, 16), (6, 16), (7, 16), (8, 16), (9, 16), (1, 15), (2, 15), (3, 15), (4, 15), (5, 15), (6, 15), (7, 15), (8, 15), (9, 15),'color6.png']
 
@@ -259,7 +260,7 @@ class Tetris(Fl_Window):
             self.statistics_list.append(stats_box)
             
             for b in range(4):
-                self.stats_grid[self.shapes[a][b][0]-4][self.shapes[a][b][1] + a*3].image(self.shapes[a][-1].copy(18, 18))
+                self.stats_grid[self.shapes[a][b][0]-4][self.shapes[a][b][1] + a*3 - 5].image(self.shapes[a][-1].copy(18, 18))
         
 
         # Create grid of boxes
@@ -274,13 +275,16 @@ class Tetris(Fl_Window):
         self.grid = []
         for a in range(10):
             temp = []
-            for b in range(20):
+            for b in range(25):
                 x = 225 + (25 * a)
-                y = 150 + (25 * b)
+                y = 25 + (25 * b)
+                
                 Box = Fl_Box(x, y, 25, 25)
                 Box.box(FL_FLAT_BOX)
                 Box.color(FL_BLACK)
                 temp.append(Box)
+                if b < 5:
+                    Box.hide()
             self.grid.append(temp)
 
 
@@ -290,23 +294,29 @@ class Tetris(Fl_Window):
             key = Fl.event_key()
                 
             if key == FL_Left:
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.move_sound)
+                pygame.mixer.music.play()
                 self.move_left()
-                sound_thread = threading.Thread(target=self.play_sound, args=(self.move_sound,))
-                sound_thread.start()
 
             elif key == FL_Right:
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.move_sound)
+                pygame.mixer.music.play()
                 self.move_right()
-                sound_thread = threading.Thread(target=self.play_sound, args=(self.move_sound,))
-                sound_thread.start()
 
-            elif key == FL_Up:
-                self.insta_down(0)
+            #elif key == FL_Up:
+            #    self.insta_down(0)
             
             elif key == FL_Down:
                 self.move_down(True)
                 
 
             elif key == ord('x'):
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.rotate_sound)
+                pygame.mixer.music.play()
+
                 if self.current_shape == "O_shape":
                     return False
 
@@ -315,6 +325,10 @@ class Tetris(Fl_Window):
                 self.rotate_shape(rotated_shape.rotate('clockwise'))
 
             elif key == ord('z'):
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.rotate_sound)
+                pygame.mixer.music.play()
+
                 if self.current_shape == "O_shape":
                     return False
                 
@@ -332,9 +346,6 @@ class Tetris(Fl_Window):
             return True
         return super(Tetris, self).handle(event)
     
-    def play_sound(self, filename):
-        winsound.SND_NOSTOP
-        winsound.PlaySound(filename, winsound.SND_FILENAME)
 
     def img_resize(self, fname, width):
         '''resizes any image type using high quality PIL library'''
@@ -358,8 +369,8 @@ class Tetris(Fl_Window):
                 self.next_grid[x][y].redraw()
 
         for x in range(len(self.next_shape)-1):
-            self.next_grid[self.next_shape[x][0]-4][self.next_shape[x][1]-4].image(self.next_shape[-1].copy(25, 25))
-            self.next_grid[self.next_shape[x][0]-4][self.next_shape[x][1]-4].redraw()
+            self.next_grid[self.next_shape[x][0]-4][self.next_shape[x][1]-9].image(self.next_shape[-1].copy(25, 25))
+            self.next_grid[self.next_shape[x][0]-4][self.next_shape[x][1]-9].redraw()
         
         if ns == -1:
             ns = random.randrange(len(self.shapes))
@@ -390,24 +401,28 @@ class Tetris(Fl_Window):
     # Move the block down repeatedly by either timeout and player control(to speed up)
     def move_down(self, key):
         for x in range(len(self.shape)-1):
-            if self.shape[x][1]+1 >= 20:
+            if self.shape[x][1]+1 >= 25:
                 if key == False:
+                    pygame.mixer.init()
+                    pygame.mixer.music.load(self.land_sound)
+                    pygame.mixer.music.play()
+
                     
                     Fl_remove_timeout(self.move_down)
                     self.clear_lines()
-                    sound_thread = threading.Thread(target=self.play_sound, args=(self.land_sound,))
-                    sound_thread.start()
+
                     self.newshape()
 
                 return
             if self.grid[self.shape[x][0]][self.shape[x][1]+1].image() != None:
                 if (self.shape[x][0], self.shape[x][1]+1) not in self.shape:
                     if key == False:
+                        pygame.mixer.init()
+                        pygame.mixer.music.load(self.land_sound)
+                        pygame.mixer.music.play()
                         Fl_remove_timeout(self.move_down)
                         self.clear_lines()
 
-                        sound_thread = threading.Thread(target=self.play_sound, args=(self.land_sound,))
-                        sound_thread.start()
                         self.add_points(50, 0)
                         self.newshape()
                         
@@ -421,6 +436,8 @@ class Tetris(Fl_Window):
             self.shape[x] = (self.shape[x][0], self.shape[x][1]+1)
 
         for x in range(len(self.shape)-1):
+            if self.shape[x][1] < 0:
+                continue
             self.grid[self.shape[x][0]][self.shape[x][1]].image(self.shape[-1].copy(25, 25))
             self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
         
@@ -516,36 +533,33 @@ class Tetris(Fl_Window):
             if newshape[x][0] < 0:
                 return
             
-            if newshape[x][1] < 0:
-                return
             
             
             if self.grid[newshape[x][0]][newshape[x][1]].image() != None:
                 if (newshape[x][0], newshape[x][1]) not in self.shape:
-                    print(':)')
-                    return
+                    if newshape[x][1] > 0:
+                        return
         
 
         for x in range(len(self.shape)-1):
-            
-            self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
-            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
+            if self.shape[x][1] > 0:
+                self.grid[self.shape[x][0]][self.shape[x][1]].image(None)
+                self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
 
         self.shape[:-1] = newshape
 
         for x in range(len(self.shape)-1):
-            self.grid[self.shape[x][0]][self.shape[x][1]].image(self.shape[-1].copy(25, 25))
-            self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
-
-        sound_thread = threading.Thread(target=self.play_sound, args=(self.rotate_sound,))
-        sound_thread.start()
+            if self.shape[x][1] > 0:
+            
+                self.grid[self.shape[x][0]][self.shape[x][1]].image(self.shape[-1].copy(25, 25))
+                self.grid[self.shape[x][0]][self.shape[x][1]].redraw()
             
     
     # Check if line is full, clear full lines and move everything above down
     def clear_lines(self):
 
         cleared_lines=[]
-        for y in range(20):
+        for y in range(5, 25):
             line_empty = False
             for x in range(10):
                 if self.grid[x][y].image() == None:
@@ -577,8 +591,10 @@ class Tetris(Fl_Window):
         if lines > 0:
             if lines < 4:
                  
-                sound_thread = threading.Thread(target=self.play_sound, args=(self.clearline_sound,))
-                sound_thread.start()
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.clearline_sound)
+                pygame.mixer.music.play()
+
             if lines == 1:
                 points = 400
 
@@ -591,8 +607,9 @@ class Tetris(Fl_Window):
             if lines == 4:
                 points = 2000
                 
-                sound_thread = threading.Thread(target=self.play_sound, args=(self.tetris_sound,))
-                sound_thread.start()
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.tetris_sound)
+                pygame.mixer.music.play()
 
         self.lines_score += lines
         if self.lines_score > 0:
@@ -626,8 +643,10 @@ class Tetris(Fl_Window):
                 file.write(str(self.top))
                 print('New Highscore!')
 
-        sound_thread = threading.Thread(target=self.play_sound, args=(self.gameover_sound,))
-        sound_thread.start()
+                pygame.mixer.init()
+                pygame.mixer.music.load(self.gameover_sound)
+                pygame.mixer.music.play()
+
         for x in range(10):
             for y in range(20):
                 self.grid[x][y].image(self.gameover_color.copy(25, 25))
