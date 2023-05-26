@@ -1,3 +1,4 @@
 pyfltk
 pillow
+pygame
 python-vlc
