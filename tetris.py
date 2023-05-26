@@ -687,9 +687,9 @@ class Tetris(Fl_Window):
                 file.write(str(self.top))
                 print('New Highscore!')
 
-                pygame.mixer.init()
-                pygame.mixer.music.load(self.gameover_sound)
-                pygame.mixer.music.play()
+        pygame.mixer.init()
+        pygame.mixer.music.load(self.gameover_sound)
+        pygame.mixer.music.play()
 
         for x in range(10):
             for y in range(25):
