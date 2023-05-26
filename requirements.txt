@@ -1,4 +1,3 @@
-fltk
+pyfltk
 pillow
-pygame
-vlc
+python-vlc
